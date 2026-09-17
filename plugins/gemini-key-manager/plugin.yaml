@@ -1,0 +1,9 @@
+name: gemini-key-manager
+version: 1.0.0
+description: >
+  Secure in-session Gemini API-key pool management for private Hermes gateways.
+  Adds Gemini keys directly to the existing credential pool without exposing
+  the raw key to the model or storing it in repository files.
+author: Tharun Prabashwara
+provides_tools: []
+provides_hooks: []
