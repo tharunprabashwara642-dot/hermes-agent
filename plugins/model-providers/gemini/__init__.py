@@ -7,12 +7,46 @@ that bypasses the standard OpenAI transport. The profile captures auth
 and endpoint metadata for auth.py / runtime_provider.py migration, and
 carries the thinking_config translation hook so the transport's profile
 path produces the same extra_body shape the legacy flag path did.
+
+Multi-key support:
+    GEMINI_API_KEY
+    GEMINI_API_KEY_2
+    GEMINI_API_KEY_3
+    ...
+
+Google's historical alias is also supported:
+    GOOGLE_API_KEY
+    GOOGLE_API_KEY_2
+    GOOGLE_API_KEY_3
+    ...
+
+The credential-pool layer already handles round-robin selection and
+429/402/401 rotation. This provider profile exposes the numbered env
+siblings to that existing pool without storing the raw keys in auth.json.
 """
 
 from typing import Any
 
 from providers import register_provider
 from providers.base import ProviderProfile
+
+
+# Keep the pool practical for hosted environments while providing a large
+# numbered key range. Users with more credentials can still add them through
+# `hermes auth add gemini --api-key ...`, which uses the same pool.
+_MAX_NUMBERED_GEMINI_KEYS = 256
+
+
+def _numbered_env_vars(base_name: str) -> tuple[str, ...]:
+    return (base_name,) + tuple(
+        f"{base_name}_{index}" for index in range(2, _MAX_NUMBERED_GEMINI_KEYS + 1)
+    )
+
+
+GEMINI_API_KEY_ENV_VARS = (
+    _numbered_env_vars("GEMINI_API_KEY")
+    + _numbered_env_vars("GOOGLE_API_KEY")
+)
 
 
 class GeminiProfile(ProviderProfile):
@@ -52,7 +86,7 @@ gemini = GeminiProfile(
     name="gemini",
     aliases=("google", "google-gemini", "google-ai-studio"),
     api_mode="chat_completions",
-    env_vars=("GOOGLE_API_KEY", "GEMINI_API_KEY"),
+    env_vars=GEMINI_API_KEY_ENV_VARS,
     base_url="https://generativelanguage.googleapis.com/v1beta",
     auth_type="api_key",
     default_aux_model="gemini-3.5-flash",
